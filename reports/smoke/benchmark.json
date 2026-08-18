@@ -1,0 +1,23 @@
+{
+  "python": "3.11.15",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "torch": "2.11.0+cu128",
+  "cuda_runtime": "12.8",
+  "cuda_available": "True",
+  "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "cudnn": "91900",
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "precision": "fp16",
+  "batch_size": 16,
+  "input_shape": [
+    128,
+    128
+  ],
+  "iterations": 20,
+  "latency_ms_per_image_mean": 1.4682781248666288,
+  "latency_ms_per_image_median": 1.459128125134157,
+  "latency_ms_per_image_p90": 1.496481249887438,
+  "latency_ms_per_image_p95": 1.4979375000621076,
+  "parameters": 89348,
+  "peak_gpu_memory_mb": 128.49658203125
+}
