@@ -5,6 +5,47 @@ State-of-the-art deep learning solution for high-accuracy restoration of low-res
 
 ---
 
+## ⚡ Quick Start: Environment Setup & Execution Commands
+
+### 1. Create & Activate Virtual Environment
+
+```bash
+# Windows PowerShell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# Linux / macOS / Bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Install PyTorch with NVIDIA CUDA GPU Support & Dependencies
+
+```bash
+# Install PyTorch with CUDA 12.1 GPU support (~2.4 GB wheel)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# Install project dependencies
+pip install -r requirements.txt
+```
+
+### 3. Run Inference / Evaluation Command
+
+To restore a directory of low-resolution noisy wafer `.npy` files:
+
+```bash
+python run.py <input-dir> <output-dir>
+```
+
+#### Official Submission Benchmark Command:
+```bash
+python run.py Test_NoisyLR/NoisyLR outputs
+```
+
+> **Note**: `run.py` autonomously discovers input `.npy` files, executes ContextNAFNet + 8-Fold TTA inference, clamps output intensities strictly to `[0.0, 1.0]`, sanitizes any `NaN`/`Inf` values, and outputs 2x upscaled restored arrays into `<output-dir>` with identical filenames.
+
+---
+
 ## 🌟 Live Wafer Restoration Demonstration (1 Frame / Sec)
 
 Below is an animated visual demonstration cycling through 10 real semiconductor wafer samples at 1 second per frame (1000ms duration). The animation displays the **Original Low-Res Noisy Input** and the **ContextNAFNet Restored Output** side-by-side:
@@ -72,23 +113,6 @@ Our training objective optimizes image restoration across spatial, structural, a
 
 ---
 
-## 🚀 Quick Start Execution Command
-
-To restore a directory of low-resolution noisy wafer `.npy` files:
-
-```bash
-python run.py <input-dir> <output-dir>
-```
-
-### Official Submission Example:
-```bash
-python run.py Test_NoisyLR/NoisyLR outputs
-```
-
-`run.py` autonomously discovers input `.npy` files, runs ContextNAFNet + 8-Fold TTA inference, clamps intensity bounds to `[0.0, 1.0]`, sanitizes `NaN`/`Inf` values, and saves 2x upscaled restored arrays into `<output-dir>` with matching filenames.
-
----
-
 ## 💻 Internal Execution Logic & Code Comments
 
 Below is a detailed code walkthrough of `run.py` demonstrating how edge cases, device allocation, and self-ensemble inference are handled:
@@ -143,20 +167,6 @@ def run_restoration(input_dir: Path, output_dir: Path, tta_folds: int = 8):
 
         # 7. Save Restored Output .npy File
         np.save(output_dir / input_path.name, pred_np)
-```
-
----
-
-## 🛠️ Environment Setup & Installation
-
-To guarantee PyTorch installs with **NVIDIA CUDA GPU support**:
-
-```bash
-# 1. Install NVIDIA CUDA 12.1 PyTorch wheel
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-
-# 2. Install project dependencies
-pip install -r requirements.txt
 ```
 
 ---
