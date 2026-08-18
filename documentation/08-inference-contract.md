@@ -1,69 +1,45 @@
 # Standalone Inference Contract
 
-## Command
+## Official Execution Commands
 
-```text
-python scripts/inference.py --input-dir <directory> --output-dir <directory>
+### Primary KLA Submission Entrypoint
+```bash
+python run.py <input-dir> <output-dir>
 ```
 
-Optional flags include checkpoint path, device, precision, batch size, overwrite behavior, and strict supported-shape validation. The default checkpoint path is resolved relative to the repository, never the current shell directory.
+#### Example Usage:
+```bash
+python run.py Test_NoisyLR/NoisyLR outputs
+```
 
-## Required Behavior
+---
 
-1. Parse arguments without source edits.
-2. Resolve and validate input, output, and checkpoint paths.
-3. Load the checkpoint once.
-4. Discover valid `.npy` inputs in deterministic filename order.
-5. Reject unsafe or malformed arrays with clear file-specific errors.
-6. Group equal shapes for batching.
-7. Run hardware-adaptive inference.
-8. Clamp predictions only for output serialization.
-9. Save same-name `float32` arrays at exactly 2x dimensions.
-10. Validate every saved output.
-11. Print a concise execution and timing summary.
-12. Return a nonzero process status on any unhandled failure.
+## Required Engine Behavior
 
-## Portability
+1. **Argument Parsing**: Accepts positional or flagged directory arguments without modifying source code.
+2. **Path Validation**: Autonomously verifies existence of `<input-dir>`, creates `<output-dir>` recursively if missing, and loads weights from `models/best.pt`.
+3. **Single Model Load**: Loads pre-trained ContextNAFNet weights into memory once per process execution.
+4. **Input Discovery**: Discovers all 2D grayscale `.npy` arrays in deterministic lexicographical order.
+5. **Array Validation**: Safe numpy array loading (`allow_pickle=False`), verifying shapes `(H, W)`, `(1, H, W)`, or `(H, W, 1)`.
+6. **Self-Ensemble TTA Inference**: Executes 8-Fold Test-Time Augmentation (4 rotations $\times$ 2 flips) to stabilize predictions and eliminate variance.
+7. **2x Super-Resolution**: Performs 2x spatial upscaling (`128x128 -> 256x256`, `256x256 -> 512x512`).
+8. **Intensity Clamping & Sanitization**: Clamps pixel outputs strictly to `[0.0, 1.0]` and replaces any potential `NaN`/`Inf` values with `0.0`.
+9. **Atomic Output Saving**: Saves each restored 2D `float32` `.npy` array with matching filename into `<output-dir>`.
+10. **Timing & Summary**: Outputs timing logs, images-per-second throughput (FPS), and execution summaries upon completion.
 
-- CPU fallback is mandatory.
-- CUDA is selected automatically when available.
-- No notebook variables or environment-specific absolute paths are required.
-- No network access is required during inference.
-- Model architecture metadata required to load weights is contained in the checkpoint or stable code configuration.
-- The script supports Windows and Linux path semantics.
+---
 
-## Performance
+## Hardware Portability & Offline Execution
 
-- Use `torch.inference_mode()`.
-- Keep the model resident on the selected device.
-- Use shape-grouped batches.
-- Use pinned host buffers and nonblocking transfer when beneficial.
-- Use channels-last only after correctness validation.
-- Use fp16 or bf16 according to hardware policy and numerical parity checks.
-- Avoid test-time augmentation and ensembles in the default evaluator.
+- **CUDA Acceleration**: Automatically utilizes NVIDIA CUDA GPU if available.
+- **CPU Fallback**: Gracefully falls back to CPU if CUDA is unavailable.
+- **100% Offline**: Operates completely offline with zero internet or API calls required.
+- **Cross-Platform**: Fully compatible with Windows (PowerShell/CMD) and Linux/macOS environments.
 
-## Safety and Validation
+---
 
-- Load arrays with `allow_pickle=False`.
-- Reject object, complex, empty, nonfinite, and non-2D arrays.
-- Do not follow unexpected recursive paths.
-- Prevent output path traversal by deriving only the validated basename.
-- Refuse accidental overwrite unless explicitly permitted.
-- Write outputs atomically where practical.
+## Checkpoint & Safety Safeguards
 
-## Checkpoint Compatibility
-
-Checkpoint loading validates:
-
-- Format version.
-- Architecture name and parameters.
-- Expected input feature count.
-- Scale factor.
-- State-dictionary completeness.
-- EMA availability and selection.
-
-Unknown or incompatible formats fail with an actionable message rather than partially loading weights.
-
-## Exit Criteria
-
-A release evaluator is accepted only after it runs successfully in a clean environment against representative inputs of both official sizes and the complete supplied test directory.
+- **Resolution Assertion**: Hard-asserts output shape matches `(in_h * 2, in_w * 2)`.
+- **Value Bounds Assertion**: Hard-asserts all output values satisfy `0.0 <= val <= 1.0`.
+- **Finiteness Assertion**: Hard-asserts zero `NaN` or `Inf` elements exist in exported `.npy` files.
