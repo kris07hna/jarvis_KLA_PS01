@@ -31,12 +31,12 @@ The core architecture, **ContextNAFNet**, is specifically tailored for nanoscale
 
 Visual inspection across diverse wafer patterns showing input degraded images, restored outputs from `models/best.pt`, ground truth targets, and residual error loss heatmaps:
 
-![Real Wafer Sample Input Flow & Restoration Quality Benchmark](reports/github_readme_hero.png)
+![Real Wafer Sample Input Flow & Restoration Quality Benchmark](reports/github_readme_hero.jpg)
 
 ### Detailed Residual Error Heatmaps
 Below is the element-wise absolute difference heatmap highlighting the precision of edge and background restoration:
 
-![ContextNAFNet Residual Heatmap](reports/context-naf-comparison-10-heatmap.png)
+![ContextNAFNet Residual Heatmap](reports/context-naf-comparison-10-heatmap.jpg)
 
 ---
 
