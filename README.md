@@ -46,6 +46,14 @@ python run.py Test_NoisyLR/NoisyLR outputs
 
 ---
 
+## 🎥 Video Demonstration & Presentation Walkthrough
+
+[![SEMICON 2026 Wafer Restoration Video Demo](https://img.youtube.com/vi/4ZoaKE5TGtw/maxresdefault.jpg)](https://www.youtube.com/watch?v=4ZoaKE5TGtw)
+
+▶️ **[Click Here to Watch Full Solution Demonstration on YouTube](https://www.youtube.com/watch?v=4ZoaKE5TGtw)**
+
+---
+
 ## 🌟 Live Wafer Restoration Demonstration (1 Frame / Sec)
 
 Below is an animated visual demonstration cycling through 10 real semiconductor wafer samples at 1 second per frame (1000ms duration). The animation displays the **Original Low-Res Noisy Input** and the **ContextNAFNet Restored Output** side-by-side:
@@ -98,18 +106,29 @@ Evaluated across a frozen validation set of 480 semiconductor wafer samples:
 
 ## 🧮 Mathematical Formulation & Loss Functions
 
-Our training objective optimizes image restoration across spatial, structural, and frequency domains:
+Our training objective optimizes image restoration across **spatial**, **structural**, and **frequency** domains:
 
-1. **Charbonnier Loss (Robust $L_1$ Variation)**:
-   $$ \mathcal{L}_{\text{Charbonnier}} = \sqrt{\| \hat{Y} - Y \|^2 + \epsilon^2}, \quad \text{with } \epsilon = 10^{-3} $$
-   *Prevents gradient vanishing/explosion while maintaining sharp edges.*
+### 1. Charbonnier Loss (Robust $L_1$ Variation)
+$$\mathcal{L}_{\text{Charbonnier}} = \sqrt{\|\hat{Y} - Y\|^2 + \epsilon^2}, \quad \text{where } \epsilon = 10^{-3}$$
 
-2. **FFT High-Frequency Reconstruction Loss**:
-   $$ \mathcal{L}_{\text{FFT}} = \| \mathcal{F}(\hat{Y}) - \mathcal{F}(Y) \|_1 $$
-   *Forces the network to accurately reconstruct nanoscale wafer line boundaries and high-frequency diffraction pattern details in Fourier domain.*
+> **Rationale**: Unlike standard $L_1$ or $L_2$ loss, the Charbonnier penalty avoids gradient vanishing near zero residuals while maintaining steep gradients for large edge errors, resulting in sharp semiconductor line edges without blur.
 
-3. **Peak Signal-to-Noise Ratio (PSNR)**:
-   $$ \text{PSNR} = 10 \cdot \log_{10} \left( \frac{\text{MAX}_I^2}{\text{MSE}} \right) $$
+---
+
+### 2. FFT High-Frequency Reconstruction Loss
+$$\mathcal{L}_{\text{FFT}} = \|\mathcal{F}(\hat{Y}) - \mathcal{F}(Y)\|_1$$
+
+> **Rationale**: Computes the 2D Fast Fourier Transform $\mathcal{F}(\cdot)$ of predicted and ground-truth wafers. Forcing Fourier amplitude parity prevents spatial smoothing and ensures sub-nanometer contact hole edges and grating line patterns are accurately reconstructed.
+
+---
+
+### 3. Peak Signal-to-Noise Ratio (PSNR)
+$$\text{PSNR} = 10 \cdot \log_{10} \left( \frac{\text{MAX}_I^2}{\text{MSE}} \right) = 20 \cdot \log_{10} \left( \frac{1.0}{\sqrt{\frac{1}{HW} \sum_{i,j} (\hat{Y}_{i,j} - Y_{i,j})^2}} \right)$$
+
+---
+
+### 4. Structural Similarity Index (SSIM)
+$$\text{SSIM}(x, y) = \frac{(2\mu_x\mu_y + C_1)(2\sigma_{xy} + C_2)}{(\mu_x^2 + \mu_y^2 + C_1)(\sigma_x^2 + \sigma_y^2 + C_2)}$$
 
 ---
 
