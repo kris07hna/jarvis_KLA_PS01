@@ -55,6 +55,23 @@ Evaluated across a frozen validation set of 480 semiconductor wafer samples:
 
 ---
 
+## 🧮 Mathematical Formulation & Loss Functions
+
+Our training objective optimizes image restoration across spatial, structural, and frequency domains:
+
+1. **Charbonnier Loss (Robust $L_1$ Variation)**:
+   $$ \mathcal{L}_{\text{Charbonnier}} = \sqrt{\| \hat{Y} - Y \|^2 + \epsilon^2}, \quad \text{with } \epsilon = 10^{-3} $$
+   *Prevents gradient vanishing/explosion while maintaining sharp edges.*
+
+2. **FFT High-Frequency Reconstruction Loss**:
+   $$ \mathcal{L}_{\text{FFT}} = \| \mathcal{F}(\hat{Y}) - \mathcal{F}(Y) \|_1 $$
+   *Forces the network to accurately reconstruct nanoscale wafer line boundaries and high-frequency diffraction pattern details in Fourier domain.*
+
+3. **Peak Signal-to-Noise Ratio (PSNR)**:
+   $$ \text{PSNR} = 10 \cdot \log_{10} \left( \frac{\text{MAX}_I^2}{\text{MSE}} \right) $$
+
+---
+
 ## 🚀 Quick Start Execution Command
 
 To restore a directory of low-resolution noisy wafer `.npy` files:
@@ -69,6 +86,64 @@ python run.py Test_NoisyLR/NoisyLR outputs
 ```
 
 `run.py` autonomously discovers input `.npy` files, runs ContextNAFNet + 8-Fold TTA inference, clamps intensity bounds to `[0.0, 1.0]`, sanitizes `NaN`/`Inf` values, and saves 2x upscaled restored arrays into `<output-dir>` with matching filenames.
+
+---
+
+## 💻 Internal Execution Logic & Code Comments
+
+Below is a detailed code walkthrough of `run.py` demonstrating how edge cases, device allocation, and self-ensemble inference are handled:
+
+```python
+# run.py - KLA Submission Entrypoint Code Structure
+import sys, time
+from pathlib import Path
+import numpy as np
+import torch
+import torch.nn.functional as F
+from tqdm import tqdm
+
+from semicon_restore.checkpoint import load_checkpoint
+from semicon_restore.inference import SelfEnsemble
+from semicon_restore.models import build_model
+
+def run_restoration(input_dir: Path, output_dir: Path, tta_folds: int = 8):
+    # 1. Device Auto-Detection (CUDA GPU vs CPU fallback)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True  # Enable cuDNN autotuner for max GPU speed
+
+    # 2. Checkpoint Discovery & Model Initialization
+    ckpt_path = Path("models/best.pt")
+    ckpt = load_checkpoint(ckpt_path)
+    model = build_model(ckpt["model_config"])
+    model.load_state_dict(ckpt.get("ema", ckpt.get("model", ckpt)))
+    model.to(device).eval()
+
+    # 3. Wrap Model in 8-Fold Self-Ensemble Test-Time Augmentation (TTA)
+    ensemble_wrapper = SelfEnsemble(model, tta_folds=8)
+
+    # 4. Process Each Input Array
+    for input_path in tqdm(sorted(input_dir.glob("*.npy"))):
+        noisy_np = np.load(input_path).astype(np.float32)
+        in_h, in_w = noisy_np.shape[:2]
+        target_h, target_w = in_h * 2, in_w * 2  # 2x Super-Resolution Target
+
+        noisy_tensor = torch.from_numpy(noisy_np)[None, None].to(device)
+
+        # 5. Forward Pass through Self-Ensemble Wrapper
+        pred_tensor = ensemble_wrapper(noisy_tensor).float()
+
+        # 6. Safeguards: Interpolation, Range Clamping, NaN/Inf Sanitization
+        if pred_tensor.shape[2:] != (target_h, target_w):
+            pred_tensor = F.interpolate(pred_tensor, size=(target_h, target_w), mode="bicubic")
+        
+        pred_np = pred_tensor.clamp(0.0, 1.0).squeeze().cpu().numpy().astype(np.float32)
+        if np.isnan(pred_np).any() or np.isinf(pred_np).any():
+            pred_np = np.nan_to_num(pred_np, nan=0.0, posinf=1.0, neginf=0.0)
+
+        # 7. Save Restored Output .npy File
+        np.save(output_dir / input_path.name, pred_np)
+```
 
 ---
 
@@ -115,8 +190,8 @@ jarvis_KLA_PS01/
 └── reports/               # Visual evaluation figures, heatmaps, and animation GIFs
     ├── wafer_restoration_demo.gif
     ├── architexture.png
-    ├── github_readme_hero.png
-    └── context-naf-comparison-10-heatmap.png
+    ├── github_readme_hero.jpg
+    └── context-naf-comparison-10-heatmap.jpg
 ```
 
 ---
